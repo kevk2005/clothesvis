@@ -37,7 +37,7 @@ export function ScanSession({ onComplete, onCancel }: ScanSessionProps) {
     return () => stopCamera()
   }, [startCamera, stopCamera])
 
-  // Evaluate pose every frame
+  // Evaluate pose every frame — also triggers countdown once pose is held long enough
   useEffect(() => {
     const state = evaluateScanState(landmarks)
 
@@ -47,23 +47,17 @@ export function ScanSession({ onComplete, onCancel }: ScanSessionProps) {
       if (countdownRef.current) clearTimeout(countdownRef.current)
     } else {
       readyTicksRef.current++
+      // Start countdown after ~20 frames of sustained 'ready' and only if not already counting
+      if (readyTicksRef.current === 20 && !frontFrame) {
+        setCountdown(COUNTDOWN_SECONDS)
+      }
     }
 
-    // Only set state if not mid-capture
+    // Only update state if not mid-capture
     setScanState((prev) =>
       prev === 'capturing' || prev === 'turn_side' || prev === 'complete' ? prev : state
     )
-  }, [landmarks])
-
-  // Trigger countdown when ready is sustained for ~1 second (≈30 frames)
-  useEffect(() => {
-    if (scanState !== 'ready' || frontFrame) return
-
-    if (readyTicksRef.current < 20) return
-
-    // Start countdown
-    setCountdown(COUNTDOWN_SECONDS)
-  }, [scanState, frontFrame])
+  }, [landmarks, frontFrame])
 
   // Decrement countdown
   useEffect(() => {
